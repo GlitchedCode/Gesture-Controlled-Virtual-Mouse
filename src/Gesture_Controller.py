@@ -5,9 +5,9 @@ import mediapipe as mp
 import pyautogui
 import math
 from enum import IntEnum
-from ctypes import cast, POINTER
-from comtypes import CLSCTX_ALL
-from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+#from ctypes import cast, POINTER
+#from comtypes import CLSCTX_ALL
+#from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from google.protobuf.json_format import MessageToDict
 import screen_brightness_control as sbcontrol
 
@@ -299,16 +299,16 @@ class Controller:
     
     def changesystemvolume():
         """sets system volume based on 'Controller.pinchlv'."""
-        devices = AudioUtilities.GetSpeakers()
-        interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-        volume = cast(interface, POINTER(IAudioEndpointVolume))
+        #devices = AudioUtilities.GetSpeakers()
+        #interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+        #volume = cast(interface, POINTER(IAudioEndpointVolume))
         currentVolumeLv = volume.GetMasterVolumeLevelScalar()
         currentVolumeLv += Controller.pinchlv/50.0
         if currentVolumeLv > 1.0:
             currentVolumeLv = 1.0
         elif currentVolumeLv < 0.0:
             currentVolumeLv = 0.0
-        volume.SetMasterVolumeLevelScalar(currentVolumeLv, None)
+        #volume.SetMasterVolumeLevelScalar(currentVolumeLv, None)
     
     def scrollVertical():
         """scrolls on screen vertically."""
@@ -436,37 +436,8 @@ class Controller:
         # implementation
         if gesture == Gest.V_GEST:
             Controller.flag = True
+            pyautogui.mouseDown(button = "left")
             pyautogui.moveTo(x, y, duration = 0.1)
-
-        elif gesture == Gest.FIST:
-            if not Controller.grabflag : 
-                Controller.grabflag = True
-                pyautogui.mouseDown(button = "left")
-            pyautogui.moveTo(x, y, duration = 0.1)
-
-        elif gesture == Gest.MID and Controller.flag:
-            pyautogui.click()
-            Controller.flag = False
-
-        elif gesture == Gest.INDEX and Controller.flag:
-            pyautogui.click(button='right')
-            Controller.flag = False
-
-        elif gesture == Gest.TWO_FINGER_CLOSED and Controller.flag:
-            pyautogui.doubleClick()
-            Controller.flag = False
-
-        elif gesture == Gest.PINCH_MINOR:
-            if Controller.pinchminorflag == False:
-                Controller.pinch_control_init(hand_result)
-                Controller.pinchminorflag = True
-            Controller.pinch_control(hand_result,Controller.scrollHorizontal, Controller.scrollVertical)
-        
-        elif gesture == Gest.PINCH_MAJOR:
-            if Controller.pinchmajorflag == False:
-                Controller.pinch_control_init(hand_result)
-                Controller.pinchmajorflag = True
-            Controller.pinch_control(hand_result,Controller.changesystembrightness, Controller.changesystemvolume)
         
 '''
 ----------------------------------------  Main Class  ----------------------------------------
@@ -555,7 +526,7 @@ class GestureController:
         handmajor = HandRecog(HLabel.MAJOR)
         handminor = HandRecog(HLabel.MINOR)
 
-        with mp_hands.Hands(max_num_hands = 2,min_detection_confidence=0.5, min_tracking_confidence=0.5) as hands:
+        with mp_hands.Hands(max_num_hands = 3,min_detection_confidence=0.5, min_tracking_confidence=0.2) as hands:
             while GestureController.cap.isOpened() and GestureController.gc_mode:
                 success, image = GestureController.cap.read()
 
@@ -569,6 +540,7 @@ class GestureController:
                 
                 image.flags.writeable = True
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                pyautogui.mouseUp(button = "left")
 
                 if results.multi_hand_landmarks:                   
                     GestureController.classify_hands(results)
@@ -578,12 +550,11 @@ class GestureController:
                     handmajor.set_finger_state()
                     handminor.set_finger_state()
                     gest_name = handminor.get_gesture()
+                    Controller.handle_controls(gest_name, handminor.hand_result)
+                
+                    gest_name = handmajor.get_gesture()
+                    Controller.handle_controls(gest_name, handmajor.hand_result)
 
-                    if gest_name == Gest.PINCH_MINOR:
-                        Controller.handle_controls(gest_name, handminor.hand_result)
-                    else:
-                        gest_name = handmajor.get_gesture()
-                        Controller.handle_controls(gest_name, handmajor.hand_result)
                     
                     for hand_landmarks in results.multi_hand_landmarks:
                         mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
@@ -596,5 +567,5 @@ class GestureController:
         cv2.destroyAllWindows()
 
 # uncomment to run directly
-# gc1 = GestureController()
-# gc1.start()
+gc1 = GestureController()
+gc1.start()
